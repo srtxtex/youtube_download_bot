@@ -7,21 +7,39 @@ from background import keep_alive  # Для поддержки работы Flas
 YOUTUBE_REGEX = r'(https?://(?:www\.)?youtu(?:\.be|be\.com)/[a-zA-Z0-9_\-?&=]+)'
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Проверяем, что есть сообщение и текст
     if update.message is None or update.message.text is None:
         return
-
+    
+    # Ищем YouTube ссылки в тексте сообщения
     matches = re.findall(YOUTUBE_REGEX, update.message.text)
     if matches:
         url = matches[0]
-        msg = await update.message.reply_text("Скачиваю видео, подождите...")
+        
+        # Логируем информацию о чате и пользователе
+        chat_type = update.message.chat.type
+        username = "Unknown"
+        if update.message.from_user:
+            username = update.message.from_user.username if update.message.from_user.username else update.message.from_user.first_name
+        print(f"YouTube ссылка найдена в {chat_type} от {username}: {url}")
+        
+        msg = await update.message.reply_text("📥 Скачиваю видео, подождите...")
         video_path = download_youtube_video(url)
+        
         if video_path:
-            await context.bot.send_video(
-                chat_id=update.message.chat_id,
-                video=open(video_path, 'rb'),
-                caption='Вот ваше видео!'
-            )
+            with open(video_path, 'rb') as video_file:
+                await context.bot.send_video(
+                    chat_id=update.message.chat_id,
+                    video=video_file,
+                    caption=f'🎬 Видео скачано для @{username}'
+                )
+            # Удаляем временный файл
             os.remove(video_path)
+            print(f"Видео успешно отправлено в {chat_type}")
+        else:
+            await update.message.reply_text("❌ Не удалось скачать видео. Проверьте ссылку.")
+        
+        # Удаляем сообщение "Скачиваю видео..."
         await msg.delete()
 
 def download_youtube_video(url):
@@ -51,5 +69,9 @@ if __name__ == "__main__":
     
     keep_alive()  # поддержка работы через Flask
     application = Application.builder().token(bot_token).build()
-    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    # Обработчик для всех текстовых сообщений (приватные чаты и группы)
+    application.add_handler(MessageHandler(
+        filters.TEXT & (~filters.COMMAND), 
+        handle_message
+    ))
     application.run_polling()
