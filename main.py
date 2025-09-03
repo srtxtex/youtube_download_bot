@@ -60,6 +60,9 @@ def download_youtube_video(url):
 
 if __name__ == "__main__":
     import logging
+    import asyncio
+    from telegram.error import Conflict
+    
     logging.basicConfig(level=logging.INFO)
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')  # токен берём из секретов Replit
     
@@ -68,10 +71,31 @@ if __name__ == "__main__":
         exit(1)
     
     keep_alive()  # поддержка работы через Flask
+    
+    # Создаем приложение
     application = Application.builder().token(bot_token).build()
+    
+    # Добавляем обработчик ошибок
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        print(f"Exception while handling an update: {context.error}")
+        if isinstance(context.error, Conflict):
+            print("Конфликт с другим экземпляром бота. Перезапускаем...")
+            await asyncio.sleep(5)  # Ждем 5 секунд перед повтором
+    
+    application.add_error_handler(error_handler)
+    
     # Обработчик для всех текстовых сообщений (приватные чаты и группы)
     application.add_handler(MessageHandler(
         filters.TEXT & (~filters.COMMAND), 
         handle_message
     ))
-    application.run_polling()
+    
+    # Запускаем бота с обработкой конфликтов
+    try:
+        print("Запускаем Telegram бота...")
+        application.run_polling(drop_pending_updates=True)
+    except Conflict as e:
+        print(f"Конфликт при запуске: {e}")
+        print("Попробуйте перезапустить через несколько секунд.")
+    except Exception as e:
+        print(f"Неожиданная ошибка: {e}")
