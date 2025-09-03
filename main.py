@@ -12,7 +12,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     matches = re.findall(YOUTUBE_REGEX, update.message.text)
     if matches:
-        url = matches
+        url = matches[0]
         msg = await update.message.reply_text("Скачиваю видео, подождите...")
         video_path = download_youtube_video(url)
         if video_path:
