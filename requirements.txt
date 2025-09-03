@@ -1,3 +1,7 @@
 python-telegram-bot
 yt-dlp
 flask
+flask
+python-telegram-bot
+telegram
+yt-dlp

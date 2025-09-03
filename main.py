@@ -44,6 +44,11 @@ if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.INFO)
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')  # токен берём из секретов Replit
+    
+    if not bot_token:
+        print("Error: TELEGRAM_BOT_TOKEN environment variable is not set!")
+        exit(1)
+    
     keep_alive()  # поддержка работы через Flask
     application = Application.builder().token(bot_token).build()
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
