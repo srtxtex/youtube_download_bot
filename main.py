@@ -63,13 +63,22 @@ def get_enhanced_ydl_opts(url: str, output_path: str) -> dict:
         'extractor_retries': 2,
     }
     
-    # Качество 480p по умолчанию для всех видео
-    if is_youtube_shorts(url):
-        # Для Shorts используем 480p
-        base_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
-    else:
-        # Для обычных видео тоже 480p
-        base_opts['format'] = 'bestvideo[height<=480]+bestaudio/best[height<=480]'
+    # Приоритетная логика выбора качества:
+    # 1. Пробуем 480p
+    # 2. Если нет, идем вверх: 720p -> 1080p -> 1440p -> 2160p
+    # 3. Если ничего выше нет, идем вниз: 360p -> 240p -> 144p
+    # 4. В конце fallback на best
+    base_opts['format'] = (
+        'bestvideo[height=480]+bestaudio/best[height=480],'
+        'bestvideo[height=720]+bestaudio/best[height=720],'
+        'bestvideo[height=1080]+bestaudio/best[height=1080],'
+        'bestvideo[height=1440]+bestaudio/best[height=1440],'
+        'bestvideo[height=2160]+bestaudio/best[height=2160],'
+        'bestvideo[height=360]+bestaudio/best[height=360],'
+        'bestvideo[height=240]+bestaudio/best[height=240],'
+        'bestvideo[height=144]+bestaudio/best[height=144],'
+        'best'
+    )
     
     # Объединяем видео и аудио в один файл
     base_opts['merge_output_format'] = 'mp4'
