@@ -64,20 +64,11 @@ def get_enhanced_ydl_opts(url: str, output_path: str) -> dict:
     }
     
     # Приоритетная логика выбора качества:
-    # 1. Пробуем 480p (видео до 480p + лучшее аудио)
-    # 2. Если нет, идем вверх: 720p -> 1080p -> 1440p -> любое
+    # 1. Пробуем 480p
+    # 2. Если нет, идем вверх: 720p -> 1080p -> 1440p
     # 3. Если ничего выше нет, идем вниз: 360p -> 240p
     # 4. В конце fallback на best
-    base_opts['format'] = (
-        'bestvideo[height<=480]+bestaudio/best,'
-        'bestvideo[height<=720]+bestaudio/best,'
-        'bestvideo[height<=1080]+bestaudio/best,'
-        'bestvideo[height<=1440]+bestaudio/best,'
-        'bestvideo+bestaudio/best,'
-        'bestvideo[height<=360]+bestaudio/best,'
-        'bestvideo[height<=240]+bestaudio/best,'
-        'best'
-    )
+    base_opts['format'] = 'bestvideo[height<=480]+bestaudio/bestvideo[height<=720]+bestaudio/bestvideo[height<=1080]+bestaudio/bestvideo[height<=1440]+bestaudio/bestvideo+bestaudio/bestvideo[height<=360]+bestaudio/bestvideo[height<=240]+bestaudio/best'
     
     # Объединяем видео и аудио в один файл
     base_opts['merge_output_format'] = 'mp4'
