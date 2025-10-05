@@ -52,39 +52,92 @@ def is_youtube_shorts(url: str) -> bool:
     """Проверка, является ли URL ссылкой на YouTube Shorts"""
     return '/shorts/' in url.lower()
 
-def get_enhanced_ydl_opts(url: str, output_path: str) -> dict:
-    """Создает оптимизированные опции для yt-dlp на основе типа видео"""
-    base_opts = {
-        'outtmpl': output_path,
-        'quiet': True,
-        'no_warnings': True,
-        'retries': 3,
-        'fragment_retries': 3,
-        'extractor_retries': 2,
-    }
+def select_best_format(formats):
+    """Выбирает лучший формат согласно приоритетам: 480p -> выше -> ниже"""
+    if not formats:
+        return None
     
-    # Приоритетная логика выбора качества:
-    # 1. Пробуем 480p
-    # 2. Если нет, идем вверх: 720p -> 1080p -> 1440p
-    # 3. Если ничего выше нет, идем вниз: 360p -> 240p
-    # 4. В конце fallback на best
-    base_opts['format'] = 'bestvideo[height<=480]+bestaudio/bestvideo[height<=720]+bestaudio/bestvideo[height<=1080]+bestaudio/bestvideo[height<=1440]+bestaudio/bestvideo+bestaudio/bestvideo[height<=360]+bestaudio/bestvideo[height<=240]+bestaudio/best'
+    # Разделяем форматы на видео и аудио
+    video_formats = []
+    audio_formats = []
+    combined_formats = []
     
-    # Объединяем видео и аудио в один файл
-    base_opts['merge_output_format'] = 'mp4'
+    for fmt in formats:
+        if fmt.get('vcodec') != 'none' and fmt.get('acodec') != 'none':
+            combined_formats.append(fmt)
+        elif fmt.get('vcodec') != 'none' and fmt.get('acodec') == 'none':
+            video_formats.append(fmt)
+        elif fmt.get('vcodec') == 'none' and fmt.get('acodec') != 'none':
+            audio_formats.append(fmt)
     
-    return base_opts
+    # Приоритеты качества
+    target_heights = [480, 720, 1080, 1440, 2160, 360, 240, 144]
+    
+    # Сначала пробуем найти комбинированный формат
+    for target in target_heights:
+        for fmt in combined_formats:
+            height = fmt.get('height', 0)
+            if height and abs(height - target) <= 100:  # допуск ±100px
+                return fmt['format_id']
+    
+    # Если нет комбинированного, ищем раздельные видео+аудио
+    selected_video = None
+    for target in target_heights:
+        for fmt in video_formats:
+            height = fmt.get('height', 0)
+            if height and abs(height - target) <= 100:
+                selected_video = fmt['format_id']
+                break
+        if selected_video:
+            break
+    
+    # Выбираем лучшее аудио
+    best_audio = None
+    if audio_formats:
+        best_audio = max(audio_formats, key=lambda x: x.get('abr', 0) or 0)['format_id']
+    
+    if selected_video and best_audio:
+        return f"{selected_video}+{best_audio}"
+    elif selected_video:
+        return selected_video
+    
+    # Fallback на лучший доступный
+    return 'best'
 
 def download_youtube_video(url):
     import yt_dlp
     output = 'temp_video.mp4'
     
     try:
-        ydl_opts = get_enhanced_ydl_opts(url, output)
+        # Сначала получаем информацию о доступных форматах
+        info_opts = {
+            'quiet': True,
+            'no_warnings': True,
+        }
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(info_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            formats = info.get('formats', [])
+            
+            # Выбираем лучший формат
+            selected_format = select_best_format(formats)
+            print(f"Выбран формат: {selected_format}")
+        
+        # Скачиваем с выбранным форматом
+        download_opts = {
+            'outtmpl': output,
+            'format': selected_format,
+            'merge_output_format': 'mp4',
+            'quiet': True,
+            'no_warnings': True,
+            'retries': 3,
+            'fragment_retries': 3,
+        }
+        
+        with yt_dlp.YoutubeDL(download_opts) as ydl:
             ydl.download([url])
             return output
+            
     except Exception as e:
         print(f"Ошибка при скачивании: {e}")
         return None
