@@ -23,10 +23,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             username = update.message.from_user.username if update.message.from_user.username else update.message.from_user.first_name
         
         # Определяем тип видео
-        video_type = "Shorts" if "/shorts/" in url else "видео"
+        is_shorts = is_youtube_shorts(url)
+        video_type = "Shorts" if is_shorts else "видео"
+        emoji = "🎬" if is_shorts else "🎥"
+        
         print(f"YouTube {video_type} найдено в {chat_type} от {username}: {url}")
         
-        msg = await update.message.reply_text("📥 Скачиваю видео, подождите...")
+        msg = await update.message.reply_text(f"{emoji} Скачиваю {video_type}, подождите...")
         video_path = download_youtube_video(url)
         
         if video_path:
@@ -45,21 +48,47 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Удаляем сообщение "Скачиваю видео..."
         await msg.delete()
 
+def is_youtube_shorts(url: str) -> bool:
+    """Проверка, является ли URL ссылкой на YouTube Shorts"""
+    return '/shorts/' in url.lower()
+
+def get_enhanced_ydl_opts(url: str, output_path: str) -> dict:
+    """Создает оптимизированные опции для yt-dlp на основе типа видео"""
+    base_opts = {
+        'outtmpl': output_path,
+        'quiet': True,
+        'no_warnings': True,
+        'retries': 3,
+        'fragment_retries': 3,
+        'extractor_retries': 2,
+    }
+    
+    # Разные форматы для Shorts и обычных видео
+    if is_youtube_shorts(url):
+        # Для Shorts используем оптимизированный формат
+        base_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]'
+    else:
+        # Для обычных видео используем лучшее качество
+        base_opts['format'] = 'bestvideo+bestaudio/best'
+    
+    # Объединяем видео и аудио в один файл
+    base_opts['merge_output_format'] = 'mp4'
+    
+    return base_opts
+
 def download_youtube_video(url):
     import yt_dlp
     output = 'temp_video.mp4'
-    ydl_opts = {
-        'outtmpl': output,
-        'format': 'mp4',
-        'quiet': True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        try:
+    
+    try:
+        ydl_opts = get_enhanced_ydl_opts(url, output)
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
             return output
-        except Exception as e:
-            print(f"Ошибка: {e}")
-            return None
+    except Exception as e:
+        print(f"Ошибка при скачивании: {e}")
+        return None
 
 if __name__ == "__main__":
     import logging
