@@ -64,20 +64,19 @@ def get_enhanced_ydl_opts(url: str, output_path: str) -> dict:
     }
     
     # Приоритетная логика выбора качества:
-    # 1. Пробуем 480p (с небольшим диапазоном)
+    # 1. Пробуем 480p
     # 2. Если нет, идем вверх: 720p -> 1080p -> 1440p -> 2160p
     # 3. Если ничего выше нет, идем вниз: 360p -> 240p -> 144p
     # 4. В конце fallback на best
     base_opts['format'] = (
-        'bestvideo[height<=480][height>=360]+bestaudio/best[height<=480][height>=360],'
-        'bestvideo[height<=720][height>=480]+bestaudio/best[height<=720][height>=480],'
-        'bestvideo[height<=1080][height>=720]+bestaudio/best[height<=1080][height>=720],'
-        'bestvideo[height<=1440][height>=1080]+bestaudio/best[height<=1440][height>=1080],'
-        'bestvideo[height>=1440]+bestaudio/best[height>=1440],'
-        'bestvideo[height<=360][height>=240]+bestaudio/best[height<=360][height>=240],'
-        'bestvideo[height<=240][height>=144]+bestaudio/best[height<=240][height>=144],'
-        'bestvideo[height<=144]+bestaudio/best[height<=144],'
-        'bestvideo+bestaudio/best'
+        'bestvideo[height<=480]+bestaudio/best[height<=480],'
+        'bestvideo[height<=720]+bestaudio/best[height<=720],'
+        'bestvideo[height<=1080]+bestaudio/best[height<=1080],'
+        'bestvideo[height<=1440]+bestaudio/best[height<=1440],'
+        'bestvideo+bestaudio,'
+        'bestvideo[height<=360]+bestaudio/best[height<=360],'
+        'bestvideo[height<=240]+bestaudio/best[height<=240],'
+        'best'
     )
     
     # Объединяем видео и аудио в один файл
