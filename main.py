@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 from background import keep_alive  # Для поддержки работы Flask
 
-YOUTUBE_REGEX = r'(https?://(?:www\.)?youtu(?:\.be|be\.com)/[a-zA-Z0-9_\-?&=]+)'
+YOUTUBE_REGEX = r'(https?://(?:www\.)?(?:youtube\.com/(?:watch\?v=|shorts/)|youtu\.be/)[a-zA-Z0-9_\-]+(?:\?[a-zA-Z0-9_\-&=]*)?)'
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Проверяем, что есть сообщение и текст
@@ -21,7 +21,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         username = "Unknown"
         if update.message.from_user:
             username = update.message.from_user.username if update.message.from_user.username else update.message.from_user.first_name
-        print(f"YouTube ссылка найдена в {chat_type} от {username}: {url}")
+        
+        # Определяем тип видео
+        video_type = "Shorts" if "/shorts/" in url else "видео"
+        print(f"YouTube {video_type} найдено в {chat_type} от {username}: {url}")
         
         msg = await update.message.reply_text("📥 Скачиваю видео, подождите...")
         video_path = download_youtube_video(url)
